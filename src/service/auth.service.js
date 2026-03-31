@@ -30,6 +30,22 @@ class AuthService {
             token
         };
     }
+    async getMe(token) {
+        const decoded = jwt.verify(token, config.jwtSecret);
+        console.log('Decoded token:', decoded);
+        const user = await this.AuthRepository.findById(decoded.userId);
+        if (!user) {
+            return { error: true, status: 404, message: 'User not found' };
+        }
+        return {
+            error: false,
+            status: 200,
+            user: {
+                username: user.username,
+                email: user.email
+            }
+        };
+    }
 }
 
 export default AuthService;

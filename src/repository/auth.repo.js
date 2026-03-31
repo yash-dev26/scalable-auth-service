@@ -1,10 +1,14 @@
 import UserModel from "../model/user.model.js";
 
 class AuthRepository {
-    async findByUsernameOrEmail(username, email) {
+    async findByUsernameOrEmail(username, email=null) {
         return UserModel.findOne({
             $or: [{ username }, { email }],
         });
+    }
+
+    async findById(id) {
+        return UserModel.findById(id);
     }
 
     async register(userData) {
