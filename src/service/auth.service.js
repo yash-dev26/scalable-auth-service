@@ -17,7 +17,9 @@ class AuthService {
         const hashedPassword = await argon2.hash(password);
         const result = await this.AuthRepository.register({ username, email, hashedPassword });
 
-        const token = jwt.sign({ userId: result._id }, config.jwtSecret, { expiresIn: '1d' });
+        const accessToken = jwt.sign({ userId: result._id }, config.jwtSecret, { expiresIn: '15m' });
+
+        const refreshToken = jwt.sign({ userId: result._id }, config.jwtSecret, { expiresIn: '7d' });
 
         return {
             error: false,
@@ -27,7 +29,8 @@ class AuthService {
                 username: result.username,
                 email: result.email,
             },
-            token
+            accessToken,
+            refreshToken
         };
     }
     async getMe(token) {
@@ -45,6 +48,22 @@ class AuthService {
                 email: user.email
             }
         };
+    }
+    async refreshToken(refreshToken) {
+        try {
+            const decoded = jwt.verify(refreshToken, config.jwtSecret);
+            const accessToken = jwt.sign({ userId: decoded.userId }, config.jwtSecret, { expiresIn: '15m' });
+            const newRefreshToken = jwt.sign({ userId: decoded.userId }, config.jwtSecret, { expiresIn: '7d' });
+            return {
+                error: false,
+                status: 200,
+                accessToken,
+                newRefreshToken
+            };
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            return { error: true, status: 401, message: 'Invalid refresh token' };
+        } 
     }
 }
 

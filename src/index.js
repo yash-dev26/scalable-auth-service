@@ -3,10 +3,13 @@ import morgan from 'morgan';
 import connectToDatabase from './config/db.config.js';
 import apiRouter from './routes/index.js';
 import config from './config/server.config.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(cookieParser());
+
 
 app.use('/api', apiRouter);
 
