@@ -13,6 +13,14 @@ authRouter.post('/register', registerUser);
 
 
 /**
+ * @route POST /api/v1/auth/login
+ * @desc Login user and issue tokens
+ * @access Public
+ */
+authRouter.post('/login', login);
+
+
+/**
  * @route GET /api/v1/auth/me
  * @desc Get current user info
  * @access Private
@@ -43,10 +51,4 @@ authRouter.post('/logout', logout);
 authRouter.post('/logout-all', logoutAll);  
  
 
-/**
- * @route POST /api/v1/auth/login
- * @desc Login user and issue tokens
- * @access Public
- */
-authRouter.post('/login', login);
 export default authRouter;
