@@ -1,6 +1,5 @@
 import AuthRepository from '../repository/auth.repo.js';
 import AuthService from '../service/auth.service.js';
-
 const authService = new AuthService(new AuthRepository());
 
 export async function registerUser(req, res) {
@@ -10,7 +9,10 @@ export async function registerUser(req, res) {
         if (!username || !email || !password) {
             return res.status(400).json({ message: 'All fields are required' });
         }
-        const result = await authService.register({ username, email, password });
+        const result = await authService.register(
+            { username, email, password },
+            { ipAddress: req.ip, userAgent: req.get('user-agent') }
+        );
         if (result.error) {
             return res.status(result.status).json({ message: result.message });
         }
@@ -28,6 +30,35 @@ export async function registerUser(req, res) {
 
     } catch (error) {
         console.error('Error registering user:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+async function login(req, res) {
+    try {
+        const { username, email, password } = req.body;
+        if (!username && !email || !password) {
+            return res.status(400).json({ message: 'Username or email and password are required' });
+        }
+
+        const result = await authService.login(
+            { username, email, password },
+            { ipAddress: req.ip, userAgent: req.get('user-agent') }
+        );
+
+        res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        const responseData = { ...result };
+        delete responseData.refreshToken;
+        return res.status(201).json(responseData);
+        
+    } catch (error) {
+        console.error('Error logging in:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 }
@@ -55,7 +86,10 @@ export async function refreshToken(req, res) {
         if (!refreshToken) {
             return res.status(401).json({ message: 'Unauthorized' });
         }
-        const result = await authService.refreshToken(refreshToken);
+        const result = await authService.refreshToken(
+            refreshToken,
+            { ipAddress: req.ip, userAgent: req.get('user-agent') }
+        );
         if (result.error) {
             return res.status(result.status).json({ message: result.message });
         }
@@ -67,9 +101,48 @@ export async function refreshToken(req, res) {
         });
         const responseData = { ...result };
         delete responseData.newRefreshToken;
-        return res.status(201).json(responseData);
+        return res.status(200).json(responseData);
     } catch (error) {
         console.error('Error refreshing token:', error);
         res.status(500).json({ message: 'Internal server error' });
     }   
+}
+
+export async function logout(req, res) {
+    try {
+        const refreshToken = req.cookies.refreshToken;
+
+        if (!refreshToken) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const result = await authService.logout(refreshToken);
+        if (result.error) {
+            return res.status(result.status).json({ message: result.message });
+        } 
+        res.clearCookie('refreshToken');
+        return res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('Error logging out:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+} 
+
+export async function logoutAll(req, res) {
+    try {
+        const refreshToken = req.cookies.refreshToken;
+
+        if (!refreshToken) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        const result = await authService.logoutAll(refreshToken);
+        if (result.error) {
+            return res.status(result.status).json({ message: result.message });
+        }
+        res.clearCookie('refreshToken');
+        return res.status(200).json({ message: 'Logged out from all sessions successfully' });
+    } catch (error) {
+        console.error('Error logging out from all sessions:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
 }
