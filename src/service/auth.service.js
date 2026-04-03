@@ -136,21 +136,27 @@ class AuthService {
     }
 
     async getMe(token) {
-        const decoded = jwt.verify(token, config.jwtSecret);
-        console.log('Decoded token:', decoded);
-        const user = await this.AuthRepository.findById(decoded.userId);
-        if (!user) {
-            return { error: true, status: 404, message: 'User not found' };
-        }
-        return {
-            error: false,
-            status: 200,
-            user: {
-                username: user.username,
-                email: user.email
+        try{
+            const decoded = jwt.verify(token, config.jwtSecret);
+            console.log('Decoded token:', decoded);
+            const user = await this.AuthRepository.findById(decoded.userId);
+            if (!user) {
+                return { error: true, status: 404, message: 'User not found' };
             }
-        };
+            return {
+                error: false,
+                status: 200,
+                user: {
+                    username: user.username,
+                    email: user.email
+                }
+            };
+        } catch (error) {
+            console.error('Error in getMe:', error);
+            return { error: true, status: 401, message: 'Invalid token' };
+        }
     }
+
     async refreshToken(refreshToken) {
         try {
             const decoded = jwt.verify(refreshToken, config.jwtSecret);
@@ -160,7 +166,7 @@ class AuthService {
                 return { error: true, status: 401, message: 'Invalid refresh token or session revoked' };
             }
 
-            const accessToken = jwt.sign({ userId: decoded.userId }, config.jwtSecret, { expiresIn: '15m' });
+            const accessToken = jwt.sign({ userId: decoded.userId, sessionId: session._id }, config.jwtSecret, { expiresIn: '15m' });
             const newRefreshToken = jwt.sign({ userId: decoded.userId }, config.jwtSecret, { expiresIn: '7d' });
             
             // Update the session with the new refresh token hash
@@ -263,7 +269,7 @@ class AuthService {
         try {
             const user = await this.AuthRepository.findByEmail(email);
             if (!user) {
-                return { error: true, status: 404, message: 'User with this email not found' };
+                return { error: false, status: 200};
             }
             const otp = await this.generateOTP();
             const otpHtml = await this.createOTPhtml(otp);
@@ -288,12 +294,27 @@ class AuthService {
 
             
             const otpRecord = await this.AuthRepository.findOTPByEmail(email);
+
             if (!otpRecord) {
-                return { error: true, status: 404, message: 'OTP record not found' };
+                return { error: true, status: 404, message: 'OTP not found' };
+            }
+
+            if (otpRecord.expiresAt < new Date()) {
+                await this.AuthRepository.deleteOTPByEmail(email);
+                return { error: true, status: 400, message: 'OTP expired' };
+            }
+
+            if (otpRecord.attempts >= 5) {
+                await this.AuthRepository.deleteOTPByEmail(email);
+                return { error: true, status: 429, message: 'Too many attempts. Request new OTP.' };
             }
 
             const isValidOTP = await argon2.verify(otpRecord.otpHash, otp);
+
             if (!isValidOTP) {
+                otpRecord.attempts += 1;
+                await otpRecord.save();
+
                 return { error: true, status: 400, message: 'Invalid OTP' };
             }
 
