@@ -9,6 +9,10 @@ class AuthRepository {
         });
     }
 
+    async findByEmail(email) {
+        return UserModel.findOne({ email });
+    }
+
     async findById(id) {
         return UserModel.findById(id);
     }
@@ -61,6 +65,14 @@ class AuthRepository {
 
     async revokeAllSessionsByUser(userId) {
         return SessionModel.updateMany({ user: userId }, { revoked: true });
+    }
+
+    async updatePasswordById(userId, hashedPassword) {
+        return UserModel.findByIdAndUpdate(
+            userId,
+            { password: hashedPassword },
+            { new: true }
+        );
     }
 }
 

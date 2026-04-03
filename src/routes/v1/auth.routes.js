@@ -1,5 +1,5 @@
 import express from 'express';
-import {registerUser, getMe, refreshToken, logout, logoutAll, login, verifyOTP} from '../../controller/auth.controller.js';
+import {registerUser, getMe, refreshToken, logout, logoutAll, login, verifyOTP, forgotPassword, resetPassword} from '../../controller/auth.controller.js';
 
 
 const authRouter = express.Router();
@@ -57,5 +57,19 @@ authRouter.post('/logout-all', logoutAll);
  * @access Public
  */
 authRouter.post('/verify-otp', verifyOTP); 
+
+/**
+ * @route POST /api/v1/auth/forgot-password
+ * @desc Initiate forgot password flow by sending OTP to email
+ * @access Public
+ */
+authRouter.post('/forgot-password', forgotPassword);
+
+/**
+ * @route POST /api/v1/auth/reset-password
+ * @desc Reset password using email + OTP + new password. Hit when forgot password form is submitted
+ * @access Public
+ */
+authRouter.post('/reset-password', resetPassword);
 
 export default authRouter;

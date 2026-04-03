@@ -178,3 +178,39 @@ export async function verifyOTP(req, res) {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
+export async function forgotPassword(req, res) {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+        const result = await authService.forgotPassword(email);
+        if (result.error) {
+            return res.status(result.status).json({ message: result.message });
+        }
+        return res.status(200).json({ message: 'OTP sent to email if it exists in our system' });
+    } catch (error) {
+        console.error('Error initiating forgot password:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export async function resetPassword(req, res) {
+    try {
+        const { email, otp, newPassword } = req.body;
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ message: 'Email, OTP, and newPassword are required' });
+        }
+
+        const result = await authService.resetPassword({ email, otp, newPassword });
+        if (result.error) {
+            return res.status(result.status).json({ message: result.message });
+        }
+
+        return res.status(200).json({ message: 'Password reset successful' });
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}

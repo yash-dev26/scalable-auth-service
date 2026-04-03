@@ -242,6 +242,54 @@ class AuthService {
         }
     }
 
+    async forgotPassword(email) {
+        try {
+            const user = await this.AuthRepository.findByEmail(email);
+            if (!user) {
+                return { error: true, status: 404, message: 'User with this email not found' };
+            }
+            const otp = await this.generateOTP();
+            const otpHtml = await this.createOTPhtml(otp);
+            const otpHash = await argon2.hash(otp);
+            await this.AuthRepository.saveOTP({ email, user: user._id, otpHash });
+            await this.sendMail(email, 'Password Reset OTP', `Your OTP for password reset is: ${otp}`, otpHtml);
+            return { error: false, status: 200, message: 'OTP sent to email for password reset' };
+        } catch (error) {
+            console.error('Error initiating forgot password:', error);
+            return { error: true, status: 500, message: 'Internal server error' };
+        }   
+    }
+
+    async resetPassword(resetPayload) {
+        try {
+            const { email, otp, newPassword } = resetPayload;
+
+            const user = await this.AuthRepository.findByEmail(email);
+            if (!user) {
+                return { error: true, status: 404, message: 'User with this email not found' };
+            }
+
+            const otpRecord = await this.AuthRepository.findOTPByEmail(email);
+            if (!otpRecord) {
+                return { error: true, status: 404, message: 'OTP record not found' };
+            }
+
+            const isValidOTP = await argon2.verify(otpRecord.otpHash, otp);
+            if (!isValidOTP) {
+                return { error: true, status: 400, message: 'Invalid OTP' };
+            }
+
+            const hashedPassword = await argon2.hash(newPassword);
+            await this.AuthRepository.updatePasswordById(user._id, hashedPassword);
+            await this.AuthRepository.deleteOTPByEmail(email);
+
+            return { error: false, status: 200, message: 'Password reset successful' };
+        } catch (error) {
+            console.error('Error resetting password:', error);
+            return { error: true, status: 500, message: 'Internal server error' };
+        }
+    }
+
 }
 
 export default AuthService;
