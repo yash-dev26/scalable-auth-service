@@ -90,7 +90,7 @@ class AuthService {
         const otpHtml = await this.createOTPhtml(otp);
 
         const otpHash = await argon2.hash(otp);
-        await this.AuthRepository.saveOTP({ email, user: result._id, otpHash });
+        await this.AuthRepository.saveOTP({ email, user: result._id, otpHash, expiresAt: new Date(Date.now() + 10 * 60 * 1000)  });
 
         await this.sendMail(email, 'Verify Your Account', `Your OTP is: ${otp}`, otpHtml);
 
@@ -210,13 +210,30 @@ class AuthService {
             const { email, otp } = otpPayload;
             const { ipAddress = null, userAgent = null } = requestMeta;
             const otpRecord = await this.AuthRepository.findOTPByEmail(email);
+
             if (!otpRecord) {
-                return { error: true, status: 404, message: 'OTP record not found' };
+                return { error: true, status: 404, message: 'OTP not found' };
             }
+
+            if (otpRecord.expiresAt < new Date()) {
+                await this.AuthRepository.deleteOTPByEmail(email);
+                return { error: true, status: 400, message: 'OTP expired' };
+            }
+
+            if (otpRecord.attempts >= 5) {
+                await this.AuthRepository.deleteOTPByEmail(email);
+                return { error: true, status: 429, message: 'Too many attempts. Request new OTP.' };
+            }
+
             const isValidOTP = await argon2.verify(otpRecord.otpHash, otp);
+
             if (!isValidOTP) {
+                otpRecord.attempts += 1;
+                await otpRecord.save();
+
                 return { error: true, status: 400, message: 'Invalid OTP' };
             }
+            
             const user = await this.AuthRepository.findById(otpRecord.user);
             if (!user) {
                 return { error: true, status: 404, message: 'User not found' };
@@ -251,7 +268,7 @@ class AuthService {
             const otp = await this.generateOTP();
             const otpHtml = await this.createOTPhtml(otp);
             const otpHash = await argon2.hash(otp);
-            await this.AuthRepository.saveOTP({ email, user: user._id, otpHash });
+            await this.AuthRepository.saveOTP({ email, user: user._id, otpHash, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
             await this.sendMail(email, 'Password Reset OTP', `Your OTP for password reset is: ${otp}`, otpHtml);
             return { error: false, status: 200, message: 'OTP sent to email for password reset' };
         } catch (error) {

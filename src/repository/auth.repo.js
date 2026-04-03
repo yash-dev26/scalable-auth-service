@@ -25,8 +25,11 @@ class AuthRepository {
     } 
     
     async saveOTP(otpData) {
-        const { email, user, otpHash } = otpData;
-        const newOTP = new OTPModel({ email, user, otpHash });
+        const { email, user, otpHash, expiresAt } = otpData;
+
+        await OTPModel.deleteMany({ email });
+        
+        const newOTP = new OTPModel({ email, user, otpHash, expiresAt });
         await newOTP.save();
         return newOTP;
     }
