@@ -1,4 +1,6 @@
 import UserModel from "../model/user.model.js";
+import OTPModel from "../model/otp.model.js";
+import SessionModel from "../model/session.model.js";
 
 class AuthRepository {
     async findByUsernameOrEmail(username, email=null) {
@@ -16,7 +18,50 @@ class AuthRepository {
         const newUser = new UserModel({ username, email, password: hashedPassword });
         await newUser.save();
         return newUser;
-    }   
+    } 
+    
+    async saveOTP(otpData) {
+        const { email, user, otpHash } = otpData;
+        const newOTP = new OTPModel({ email, user, otpHash });
+        await newOTP.save();
+        return newOTP;
+    }
+
+    async findOTPByEmail(email) {
+        return OTPModel.findOne({ email }).sort({ createdAt: -1 });
+    }
+
+    async deleteOTPByEmail(email) {
+        return OTPModel.deleteMany({ email });
+    }
+
+    async createSession(sessionData) {
+        return SessionModel.create(sessionData);
+    }
+
+    async findActiveSessionsByUser(userId) {
+        return SessionModel.find({ user: userId, revoked: false });
+    }
+
+    async updateSessionRefreshToken(sessionId, refreshTokenHash) {
+        return SessionModel.findByIdAndUpdate(
+            sessionId,
+            { refreshToken: refreshTokenHash },
+            { new: true }
+        );
+    }
+
+    async revokeSessionById(sessionId) {
+        return SessionModel.findByIdAndUpdate(
+            sessionId,
+            { revoked: true },
+            { new: true }
+        );
+    }
+
+    async revokeAllSessionsByUser(userId) {
+        return SessionModel.updateMany({ user: userId }, { revoked: true });
+    }
 }
 
 export default AuthRepository;

@@ -1,5 +1,5 @@
 import express from 'express';
-import {registerUser, getMe, refreshToken, logout, logoutAll, login} from '../../controller/auth.controller.js';
+import {registerUser, getMe, refreshToken, logout, logoutAll, login, verifyOTP} from '../../controller/auth.controller.js';
 
 
 const authRouter = express.Router();
@@ -48,7 +48,14 @@ authRouter.post('/logout', logout);
  * @desc Logout user from all sessions by revoking all refresh tokens
  * @access Private
  */
-authRouter.post('/logout-all', logoutAll);  
- 
+authRouter.post('/logout-all', logoutAll); 
+
+
+/**
+ * @route POST /api/v1/auth/verify-otp
+ * @desc Verify OTP for account verification
+ * @access Public
+ */
+authRouter.post('/verify-otp', verifyOTP); 
 
 export default authRouter;

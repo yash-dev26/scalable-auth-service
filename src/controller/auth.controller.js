@@ -16,17 +16,7 @@ export async function registerUser(req, res) {
         if (result.error) {
             return res.status(result.status).json({ message: result.message });
         }
-
-        res.cookie('refreshToken', result.refreshToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'Strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-
-        const responseData = { ...result };
-        delete responseData.refreshToken;
-        return res.status(201).json(responseData);
+        return res.status(201).json(result);
 
     } catch (error) {
         console.error('Error registering user:', error);
@@ -34,7 +24,7 @@ export async function registerUser(req, res) {
     }
 }
 
-async function login(req, res) {
+export async function login(req, res) {
     try {
         const { username, email, password } = req.body;
         if (!username && !email || !password) {
@@ -46,6 +36,10 @@ async function login(req, res) {
             { ipAddress: req.ip, userAgent: req.get('user-agent') }
         );
 
+        if (result.error) {
+            return res.status(result.status).json({ message: result.message });
+        }
+
         res.cookie('refreshToken', result.refreshToken, {
             httpOnly: true,
             secure: true,
@@ -55,7 +49,7 @@ async function login(req, res) {
 
         const responseData = { ...result };
         delete responseData.refreshToken;
-        return res.status(201).json(responseData);
+    return res.status(200).json(responseData);
         
     } catch (error) {
         console.error('Error logging in:', error);
@@ -143,6 +137,44 @@ export async function logoutAll(req, res) {
         return res.status(200).json({ message: 'Logged out from all sessions successfully' });
     } catch (error) {
         console.error('Error logging out from all sessions:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export async function verifyOTP(req, res) {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Email and OTP are required' });
+        }
+        const result = await authService.verifyOTP(
+            { email, otp },
+            { ipAddress: req.ip, userAgent: req.get('user-agent') }
+        );
+        if (result.error) {
+            return res.status(result.status).json({ message: result.message });
+        }
+        res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        const responseData = { ...result };
+        delete responseData.refreshToken;
+
+        return res.status(200).json({
+            message: 'Account verified successfully',
+            user: {
+                username: responseData.username,
+                email: responseData.email,
+                verified: responseData.verified
+            },
+            accessToken: responseData.accessToken
+        });
+    } catch (error) {
+        console.error('Error verifying OTP:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 }
