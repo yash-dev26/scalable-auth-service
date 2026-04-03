@@ -1,6 +1,9 @@
 import express from 'express';
 import {registerUser, getMe, refreshToken, logout, logoutAll, login, verifyOTP, forgotPassword, resetPassword} from '../../controller/auth.controller.js';
-
+import {
+    strictLimiter,
+    mediumLimiter
+} from '../../middleware/rateLimit.middleware.js';
 
 const authRouter = express.Router();
 
@@ -9,7 +12,7 @@ const authRouter = express.Router();
  * @desc Register a new user
  * @access Public
  */
-authRouter.post('/register', registerUser);
+authRouter.post('/register', mediumLimiter, registerUser);
 
 
 /**
@@ -17,7 +20,7 @@ authRouter.post('/register', registerUser);
  * @desc Login user and issue tokens
  * @access Public
  */
-authRouter.post('/login', login);
+authRouter.post('/login', strictLimiter, login);
 
 
 /**
@@ -25,7 +28,7 @@ authRouter.post('/login', login);
  * @desc Get current user info
  * @access Private
  */
-authRouter.get('/me', getMe);
+authRouter.get('/me', mediumLimiter, getMe);
 
 
 /**
@@ -33,14 +36,14 @@ authRouter.get('/me', getMe);
  * @desc Refresh access token using refresh token
  * @access Public (but requires refresh token in cookie)
  */
-authRouter.post('/refresh-token', refreshToken);
+authRouter.post('/refresh-token', mediumLimiter, refreshToken);
 
 /**
  * @route POST /api/v1/auth/logout
  * @desc Logout user by revoking refresh token
  * @access Private
  */
-authRouter.post('/logout', logout);
+authRouter.post('/logout', mediumLimiter, logout);
 
 
 /**
@@ -48,7 +51,7 @@ authRouter.post('/logout', logout);
  * @desc Logout user from all sessions by revoking all refresh tokens
  * @access Private
  */
-authRouter.post('/logout-all', logoutAll); 
+authRouter.post('/logout-all', mediumLimiter, logoutAll); 
 
 
 /**
@@ -56,20 +59,20 @@ authRouter.post('/logout-all', logoutAll);
  * @desc Verify OTP for account verification
  * @access Public
  */
-authRouter.post('/verify-otp', verifyOTP); 
+authRouter.post('/verify-otp', strictLimiter, verifyOTP); 
 
 /**
  * @route POST /api/v1/auth/forgot-password
  * @desc Initiate forgot password flow by sending OTP to email
  * @access Public
  */
-authRouter.post('/forgot-password', forgotPassword);
+authRouter.post('/forgot-password', mediumLimiter, forgotPassword);
 
 /**
  * @route POST /api/v1/auth/reset-password
  * @desc Reset password using email + OTP + new password. Hit when forgot password form is submitted
  * @access Public
  */
-authRouter.post('/reset-password', resetPassword);
+authRouter.post('/reset-password', mediumLimiter, resetPassword);
 
 export default authRouter;

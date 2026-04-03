@@ -286,6 +286,7 @@ class AuthService {
                 return { error: true, status: 404, message: 'User with this email not found' };
             }
 
+            
             const otpRecord = await this.AuthRepository.findOTPByEmail(email);
             if (!otpRecord) {
                 return { error: true, status: 404, message: 'OTP record not found' };
@@ -296,9 +297,21 @@ class AuthService {
                 return { error: true, status: 400, message: 'Invalid OTP' };
             }
 
+            const isSamePassword = await argon2.verify(user.password, newPassword);
+
+            if (isSamePassword) {
+                return {
+                    error: true,
+                    status: 400,
+                    message: "New password must be different from old password"
+                };
+            }
+
             const hashedPassword = await argon2.hash(newPassword);
             await this.AuthRepository.updatePasswordById(user._id, hashedPassword);
             await this.AuthRepository.deleteOTPByEmail(email);
+
+            await this.AuthRepository.revokeAllSessionsByUser(user._id);
 
             return { error: false, status: 200, message: 'Password reset successful' };
         } catch (error) {

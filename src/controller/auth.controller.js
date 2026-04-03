@@ -27,7 +27,7 @@ export async function registerUser(req, res) {
 export async function login(req, res) {
     try {
         const { username, email, password } = req.body;
-        if (!username && !email || !password) {
+        if ((!username && !email) || !password) {
             return res.status(400).json({ message: 'Username or email and password are required' });
         }
 
